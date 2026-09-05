@@ -1,0 +1,9 @@
+# Step 9-14 — Project Dependencies
+
+pandas==3.0.5
+numpy==2.5.2
+scikit-learn==1.6.1
+joblib==1.6.0
+fastapi==0.141.1
+uvicorn==0.52.4
+requests==2.34.2
