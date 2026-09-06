@@ -1,0 +1,23 @@
+# Python virtual environment
+venv313/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Git repository
+.git/
+.gitignore
+
+# VS Code settings
+.vscode/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Local environment variables
+.env
+
+# Temporary files
+*.tmp
+*.log
