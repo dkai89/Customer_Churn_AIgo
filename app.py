@@ -1,14 +1,16 @@
-# Step 10-11 — FastAPI Customer Churn Prediction API
+# Step 15 — Production FastAPI + Frontend Serving
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import pandas as pd
 import joblib
 
 
 # ============================================================
-# Step 10-7 — Customer Input Schema
+# 1. Customer Input Schema
 # ============================================================
 
 class CustomerData(BaseModel):
@@ -34,7 +36,7 @@ class CustomerData(BaseModel):
 
 
 # ============================================================
-# Step 10-11 — Prediction Response Schema
+# 2. Prediction Response Schema
 # ============================================================
 
 class PredictionResponse(BaseModel):
@@ -45,7 +47,7 @@ class PredictionResponse(BaseModel):
 
 
 # ============================================================
-# FastAPI Application
+# 3. FastAPI Application
 # ============================================================
 
 app = FastAPI(
@@ -53,6 +55,12 @@ app = FastAPI(
     description="API for predicting customer churn",
     version="1.0.0"
 )
+
+
+# ============================================================
+# 4. CORS Middleware
+# ============================================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -61,26 +69,29 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+
 # ============================================================
-# Saved ML Pipeline Load करें
+# 5. Load Saved ML Pipeline
 # ============================================================
 
 model = joblib.load("final_churn_pipeline.joblib")
 
 
 # ============================================================
-# Home Endpoint
+# 6. API Health Check
 # ============================================================
 
-@app.get("/")
-def home():
+@app.get("/api/health")
+def health_check():
     return {
-        "message": "Customer Churn Prediction API is running!"
+        "status": "healthy",
+        "model_loaded": True,
+        "model_type": type(model).__name__
     }
 
 
 # ============================================================
-# Model Status Endpoint
+# 7. Model Status
 # ============================================================
 
 @app.get("/model-status")
@@ -92,35 +103,62 @@ def model_status():
 
 
 # ============================================================
-# Step 10-10 / Step 10-11 — Prediction Endpoint
+# 8. Prediction API
 # ============================================================
-
-# Step 10-13 — Prediction Endpoint Error Handling
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(customer: CustomerData):
 
     try:
-        # Customer data को DataFrame में बदलें
         customer_df = pd.DataFrame([customer.model_dump()])
 
-        # Prediction करें
         prediction = model.predict(customer_df)[0]
+
         probability = model.predict_proba(customer_df)[0]
 
-        # Prediction को readable label में बदलें
-        prediction_label = "Churn" if prediction == 1 else "No Churn"
+        prediction_label = (
+            "Churn"
+            if prediction == 1
+            else "No Churn"
+        )
 
-        # Response भेजें
         return {
             "prediction": prediction_label,
             "prediction_code": int(prediction),
-            "churn_probability": round(float(probability[1]), 4),
-            "no_churn_probability": round(float(probability[0]), 4)
+            "churn_probability": round(
+                float(probability[1]), 4
+            ),
+            "no_churn_probability": round(
+                float(probability[0]), 4
+            )
         }
 
     except Exception as error:
+
         raise HTTPException(
             status_code=500,
             detail=f"Prediction failed: {str(error)}"
         )
+
+
+# ============================================================
+# 9. Serve Frontend
+# ============================================================
+
+@app.get("/", include_in_schema=False)
+def serve_frontend():
+    return FileResponse("frontend/index.html")
+
+
+# ============================================================
+# 10. Serve Frontend Static Files
+# ============================================================
+
+app.mount(
+    "/",
+    StaticFiles(
+        directory="frontend",
+        html=True
+    ),
+    name="frontend"
+)
